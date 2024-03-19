@@ -54,8 +54,9 @@ int main( int argc, char * argv[] ) {
     long int port_num = 0;
     char * message = NULL;
     char * ip_addr = "192.168.56.1"; // default send address
+    char * this_ip_addr = "127.0.0.2"; // default HERE address
 
-    while ((opt = getopt (argc, argv, ":p:m:i:")) != -1) {
+    while ((opt = getopt (argc, argv, ":p:m:i:h:")) != -1) {
 
         assert(optarg != NULL); // just for sanity
 
@@ -76,6 +77,13 @@ int main( int argc, char * argv[] ) {
             case 'i': { // ip address option
 
                 ip_addr = optarg;
+                break;
+
+            }
+
+            case 'h': { // ip address HERE option
+
+                this_ip_addr = optarg;
                 break;
 
             }
@@ -111,13 +119,24 @@ int main( int argc, char * argv[] ) {
 
     dest_addr.sin_family = AF_INET; // specify ipv4
     dest_addr.sin_port = htons(port_num); // send to port 12345
-    dest_addr.sin_addr.s_addr = inet_addr(ip_addr); // specify ip adrr
+    dest_addr.sin_addr.s_addr = inet_addr(ip_addr); // specify ip adrr to send to
 
-    // bind socket to port
-    bind(client_socket_id, (struct sockaddr *) &dest_addr, sizeof(dest_addr));
+    struct sockaddr_in src_addr;
+
+    src_addr.sin_family = AF_INET; // specify ipv4
+    src_addr.sin_port = htons(port_num); // send to port 12345
+    src_addr.sin_addr.s_addr = inet_addr(this_ip_addr); // specify src ip adrr
+
+    bind(client_socket_id, (struct sockaddr *)&src_addr, sizeof(src_addr));
+
+    if( src_addr.sin_addr.s_addr == INADDR_NONE ) { // if ip addr is invalid, exit
+        fprintf(stderr, "%sThe source ip address \"%s\" couldn't be processed.\nPlease try again.%s\n",
+                ASCII_COLOR_RED, ip_addr, ASCII_COLOR_RESET);
+        exit(EXIT_FAILURE);
+    }
 
     if( dest_addr.sin_addr.s_addr == INADDR_NONE ) { // if ip addr is invalid, exit
-        fprintf(stderr, "%sThe ip address \"%s\" couldn't be processed.\nPlease try again.%s\n",
+        fprintf(stderr, "%sThe destination ip address \"%s\" couldn't be processed.\nPlease try again.%s\n",
                 ASCII_COLOR_RED, ip_addr, ASCII_COLOR_RESET);
         exit(EXIT_FAILURE);
     }
@@ -138,7 +157,7 @@ int main( int argc, char * argv[] ) {
 
         char receive_buffer[MAX_ETH_PAYLOAD_SIZE] = {0};
 
-        recvfrom(client_socket_id, receive_buffer, MAX_ETH_PAYLOAD_SIZE, 0, NULL, NULL);
+        recvfrom(client_socket_id, receive_buffer, MAX_ETH_PAYLOAD_SIZE, 0,NULL, NULL);
 
         current_time = time(NULL);
 
