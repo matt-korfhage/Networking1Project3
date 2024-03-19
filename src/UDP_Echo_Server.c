@@ -147,7 +147,7 @@ int main(int argc, char * argv[]) {
             sendto(server_socket_id, receive_buffer, strlen(receive_buffer), 0,
                    (struct sockaddr *)&source_addr, source_addr_len);
 
-            printf("Sent \"%s\" back to client at %s", receive_buffer, inet_ntoa(source_addr.sin_addr));
+            printf("Sent \"%s\" back to client at %s\n", receive_buffer, inet_ntoa(source_addr.sin_addr));
         }
     }
     #pragma clang diagnostic pop
