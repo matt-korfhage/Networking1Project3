@@ -15,6 +15,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <time.h>
+#include <signal.h>
 
 
 #define UDP_PROTOCOL_NUM 17 // http://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml
@@ -24,9 +25,32 @@
 #define ASCII_COLOR_YELLO "\e[0;33m"
 #define MAX_ETH_PAYLOAD_SIZE 1480
 
-int main(int argc, char * argv[]) {
+int client_socket_id = 0;
 
-    int opt = 0;
+
+void socket_cleanup( void );
+void skt_clean( int option );
+
+
+void skt_clean( int option ) {
+    exit(EXIT_SUCCESS);
+}
+
+
+void socket_cleanup( void ) {
+    printf("Closing client socket...\n");
+    close(client_socket_id); // cleanup socket on close
+}
+
+
+int main( int argc, char * argv[] ) {
+
+    // register socket cleanup functions for process termination
+    atexit(socket_cleanup);
+    signal(SIGINT, skt_clean);
+    signal(SIGTERM, skt_clean);
+
+    int opt;
     long int port_num = 0;
     char * message = NULL;
     char * ip_addr = "192.168.56.1"; // default send address
@@ -78,7 +102,7 @@ int main(int argc, char * argv[]) {
     printf("%sBeginning client on:\nPORT: %ld\nMESSAGE: \"%s\"\n%s",
            ASCII_COLOR_YELLO, port_num, message, ASCII_COLOR_RESET);
 
-    int client_socket_id = socket(AF_INET, // IPV4
+    client_socket_id = socket(AF_INET, // IPV4
                                   SOCK_DGRAM, // datagram type
                                   UDP_PROTOCOL_NUM
                                   );
@@ -90,7 +114,7 @@ int main(int argc, char * argv[]) {
     dest_addr.sin_addr.s_addr = inet_addr(ip_addr); // specify ip adrr
 
     // bind socket to port
-    int bind_result = bind(client_socket_id, (struct sockaddr *) &dest_addr, sizeof(dest_addr));
+    bind(client_socket_id, (struct sockaddr *) &dest_addr, sizeof(dest_addr));
 
     if( dest_addr.sin_addr.s_addr == INADDR_NONE ) { // if ip addr is invalid, exit
         fprintf(stderr, "%sThe ip address \"%s\" couldn't be processed.\nPlease try again.%s\n",
@@ -108,6 +132,8 @@ int main(int argc, char * argv[]) {
 
     time_t current_time;
 
+    #pragma clang diagnostic push
+    #pragma ide diagnostic ignored "EndlessLoop"
     while(true) { // listen for messages back
 
         char receive_buffer[MAX_ETH_PAYLOAD_SIZE] = {0};
@@ -119,8 +145,6 @@ int main(int argc, char * argv[]) {
         if(strlen(receive_buffer) > 0) { printf("%sReceived message: %s\n",
                                                 ctime(&current_time), receive_buffer); }
     }
+    #pragma clang diagnostic pop
 
-    close(client_socket_id); // cleanup socket on close
-
-    return 0;
 }
