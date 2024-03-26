@@ -54,7 +54,7 @@ int main(int argc, char * argv[]) {
     int opt = 0;
     long int port_num = 0;
     char * message = NULL;
-    char * ip_addr = "192.168.56.1"; // default send address
+    char * ip_addr = "192.168.255.255"; // default send address
 
     while ((opt = getopt (argc, argv, ":p:m:i:")) != -1) {
 
@@ -102,10 +102,13 @@ int main(int argc, char * argv[]) {
                               UDP_PROTOCOL_NUM
     );
 
+    int broadcast = 1;
+    setsockopt(server_socket_id,SOL_SOCKET,SO_BROADCAST,&broadcast,sizeof(broadcast));
+
     struct sockaddr_in bind_addr;
 
     bind_addr.sin_family = AF_INET; // specify ipv4
-    bind_addr.sin_port = htons(port_num); // send to port 12345
+    bind_addr.sin_port = htons(port_num); // send to port
     bind_addr.sin_addr.s_addr = inet_addr(ip_addr); // specify ip adrr
 
     // bind socket to port
@@ -134,7 +137,7 @@ int main(int argc, char * argv[]) {
         socklen_t source_addr_len = sizeof(source_addr);
 
         recvfrom(server_socket_id, receive_buffer, MAX_ETH_PAYLOAD_SIZE, 0,
-                 (struct sockaddr *)&source_addr, &source_addr_len);
+                 (struct sockaddr *) &source_addr, &source_addr_len);
 
         current_time = time(NULL);
 
@@ -145,7 +148,7 @@ int main(int argc, char * argv[]) {
             strcat(receive_buffer, message); // append custom response to echo
 
             sendto(server_socket_id, receive_buffer, strlen(receive_buffer), 0,
-                   (struct sockaddr *)&source_addr, source_addr_len);
+                   (struct sockaddr *) &source_addr, source_addr_len);
 
             printf("Sent \"%s\" back to client at %s\n", receive_buffer, inet_ntoa(source_addr.sin_addr));
         }

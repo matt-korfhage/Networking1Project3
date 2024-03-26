@@ -53,10 +53,9 @@ int main( int argc, char * argv[] ) {
     int opt;
     long int port_num = 0;
     char * message = NULL;
-    char * ip_addr = "192.168.56.1"; // default send address
-    char * this_ip_addr = "127.0.0.2"; // default HERE address
+    char * ip_addr = "192.168.255.255"; // default send address (broadcast can be respecified)
 
-    while ((opt = getopt (argc, argv, ":p:m:i:h:")) != -1) {
+    while ((opt = getopt (argc, argv, ":p:m:i:")) != -1) {
 
         assert(optarg != NULL); // just for sanity
 
@@ -81,13 +80,6 @@ int main( int argc, char * argv[] ) {
 
             }
 
-            case 'h': { // ip address HERE option
-
-                this_ip_addr = optarg;
-                break;
-
-            }
-
             default:
                 fprintf(stderr, "Unknown option specified.\nPlease try again. \n");
                 exit(EXIT_FAILURE);
@@ -107,7 +99,7 @@ int main( int argc, char * argv[] ) {
     ** would need to re-run the program.
     */
 
-    printf("%sBeginning client on:\nPORT: %ld\nMESSAGE: \"%s\"\n%s",
+    printf("%sBeginning broadcast on:\nPORT: %ld\nMESSAGE: \"%s\"\n%s",
            ASCII_COLOR_YELLO, port_num, message, ASCII_COLOR_RESET);
 
     client_socket_id = socket(AF_INET, // IPV4
@@ -115,25 +107,15 @@ int main( int argc, char * argv[] ) {
                                   UDP_PROTOCOL_NUM
                                   );
 
+    // make sure to set the socket to be in directed broadcast mode
+    int broadcast = 1;
+    setsockopt(client_socket_id,SOL_SOCKET,SO_BROADCAST,&broadcast,sizeof(broadcast));
+
     struct sockaddr_in dest_addr;
 
     dest_addr.sin_family = AF_INET; // specify ipv4
-    dest_addr.sin_port = htons(port_num); // send to port 12345
-    dest_addr.sin_addr.s_addr = inet_addr(ip_addr); // specify ip adrr to send to
-
-    struct sockaddr_in src_addr;
-
-    src_addr.sin_family = AF_INET; // specify ipv4
-    src_addr.sin_port = htons(port_num); // send to port 12345
-    src_addr.sin_addr.s_addr = inet_addr(this_ip_addr); // specify src ip adrr
-
-    bind(client_socket_id, (struct sockaddr *)&src_addr, sizeof(src_addr));
-
-    if( src_addr.sin_addr.s_addr == INADDR_NONE ) { // if ip addr is invalid, exit
-        fprintf(stderr, "%sThe source ip address \"%s\" couldn't be processed.\nPlease try again.%s\n",
-                ASCII_COLOR_RED, ip_addr, ASCII_COLOR_RESET);
-        exit(EXIT_FAILURE);
-    }
+    dest_addr.sin_port = htons(port_num); // send to specific port
+    dest_addr.sin_addr.s_addr = inet_addr(ip_addr); // specify ip addr to send to
 
     if( dest_addr.sin_addr.s_addr == INADDR_NONE ) { // if ip addr is invalid, exit
         fprintf(stderr, "%sThe destination ip address \"%s\" couldn't be processed.\nPlease try again.%s\n",
@@ -144,7 +126,7 @@ int main( int argc, char * argv[] ) {
     sendto(client_socket_id, message, strlen(message),
            0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
 
-    printf("%sUDP socket successfully created and sent to ip address %s.%s\n",
+    printf("%sUDP socket successfully created and message sent to ip address %s.%s\n",
            ASCII_COLOR_GREEN, ip_addr, ASCII_COLOR_RESET);
 
     printf("Polling for response...\n...\n");
@@ -157,7 +139,7 @@ int main( int argc, char * argv[] ) {
 
         char receive_buffer[MAX_ETH_PAYLOAD_SIZE] = {0};
 
-        recvfrom(client_socket_id, receive_buffer, MAX_ETH_PAYLOAD_SIZE, 0,NULL, NULL);
+        recv(client_socket_id, receive_buffer, MAX_ETH_PAYLOAD_SIZE, 0);
 
         current_time = time(NULL);
 
